@@ -32,7 +32,9 @@ export const lessLoader = (content, options: Less.Options = {}): Plugin => {
             loader: 'css',
             resolveDir: dir,
           };
-        } catch (e) {}
+        } catch (e) {
+          console.log(e)
+        }
       });
     },
   };

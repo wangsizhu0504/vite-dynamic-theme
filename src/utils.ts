@@ -1,8 +1,9 @@
 import { ResolvedConfig } from 'vite';
 import { createHash } from 'crypto';
-import { ResolveSelector } from '.';
-import { commentRE, cssBlockRE, ruleRE, cssValueRE, safeEmptyRE, importSafeRE } from './constants';
+import { ResolveSelector } from './types';
+import { commentRE, cssBlockRE, ruleRE, cssValueRE, safeEmptyRE, importSafeRE, VITE_CLIENT_ENTRY, cssVariableString } from './constants';
 import CleanCSS from 'clean-css';
+
 export function getVariablesReg(colors: string[]) {
   return new RegExp(
     colors
@@ -47,8 +48,7 @@ export function createFileHash() {
  */
 export async function minifyCSS(css: string, config: ResolvedConfig) {
   const res = new CleanCSS({
-    rebase: false,
-    ...config.build.cleanCssOptions,
+    rebase: false
   }).minify(css);
 
   if (res.errors && res.errors.length) {
@@ -119,10 +119,29 @@ export function extractVariable(
       continue;
     }
 
-    allExtractedVariable += `${
-      resolveSelector ? resolveSelector(cssSelector) : cssSelector
-    } {${colorReplaceTemplates.join(';')}}`;
+    allExtractedVariable += `${resolveSelector ? resolveSelector(cssSelector) : cssSelector
+      } {${colorReplaceTemplates.join(';')}}`;
   }
 
   return allExtractedVariable;
+}
+
+
+// Intercept the css code embedded in js
+export async function getClientStyleString(code: string) {
+  if (!code.includes(VITE_CLIENT_ENTRY)) {
+    return code;
+  }
+  code = code.replace(/\\n/g, '');
+  const cssPrefix = cssVariableString;
+  const cssPrefixLen = cssPrefix.length;
+
+  const cssPrefixIndex = code.indexOf(cssPrefix);
+  const len = cssPrefixIndex + cssPrefixLen;
+  const cssLastIndex = code.indexOf('\n', len + 1);
+
+  if (cssPrefixIndex !== -1) {
+    code = code.slice(len, cssLastIndex);
+  }
+  return code;
 }
