@@ -1,6 +1,6 @@
 {
-  "name": "vite-plugin-theme",
-  "version": "0.8.3",
+  "name": "vite-dynamic-theme",
+  "version": "0.8.4",
   "description": "Vite plugin for dynamically changing the theme color of the interface",
   "main": "dist/index.js",
   "module": "dist/index.js",
@@ -38,14 +38,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/vbenjs/vite-plugin-theme"
+    "url": "https://github.com/wangsizhu0504/vite-dynamic-theme"
   },
-  "bugs": {
-    "url": "https://github.com/vbenjs/vite-plugin-theme/issues"
-  },
-  "homepage": "https://github.com/vbenjs/vite-plugin-theme/tree/master/#readme",
+  "homepage": "https://github.com/wangsizhu0504/vite-dynamic-theme/tree/master/#readme",
   "peerDependencies": {
-    "vite": ">=2.0.0-beta.49"
+    "vite": ">=3.2.3"
   },
   "devDependencies": {
     "@commitlint/cli": "^17.2.0",
@@ -86,7 +83,7 @@
     "clean-css": "^5.3.1",
     "debug": "^4.3.4",
     "esbuild": "^0.11.23",
-    "esbuild-plugin-alias": "^0.1.2",
+    "esbuild-plugin-alias": "^0.2.1",
     "tinycolor2": "^1.4.2"
   }
 }
