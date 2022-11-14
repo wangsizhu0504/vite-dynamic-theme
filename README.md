@@ -1,4 +1,6 @@
-# vite-plugin-theme
+# vite-dynamic-theme
+
+> base [vite-plugin-theme](https://github.com/vbenjs/vite-plugin-theme)
 
 **English** | [中文](./README.zh_CN.md)
 
@@ -12,7 +14,7 @@ After vite processes the css and dynamically analyzes the color value in the css
 
 **node version:** >=12.0.0
 
-**vite version:** >=2.0.0
+**vite version:** >=3.0.0
 
 ```
 yarn add vite-plugin-theme -D

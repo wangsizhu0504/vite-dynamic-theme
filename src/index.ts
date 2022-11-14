@@ -1,59 +1,30 @@
-import { Plugin, ResolvedConfig } from 'vite';
+import { PluginOption } from 'vite';
 import path from 'path';
 import fs from 'fs-extra';
-import { debug as Debug } from 'debug';
-import { extractVariable, minifyCSS } from './utils';
+import { createFileHash, extractVariable, formatCss, getClientStyleString, minifyCSS } from './utils';
+import chalk from "chalk";
+import { cssLangRE } from './constants';
+import { injectClientPlugin } from './injectClientPlugin';
+import { createContext } from "./context";
+import { ViteThemeOptions } from './types';
 
 export * from '../client/colorUtils';
 
 export { antdDarkThemePlugin } from './antdDarkThemePlugin';
 
-import { VITE_CLIENT_ENTRY, cssLangRE, cssVariableString, CLIENT_PUBLIC_PATH } from './constants';
 
-export type ResolveSelector = (selector: string) => string;
+const name = 'vite:dynamic-theme';
 
-export type InjectTo = 'head' | 'body' | 'body-prepend';
-
-export interface ViteThemeOptions {
-  colorVariables: string[];
-  wrapperCssSelector?: string;
-  resolveSelector?: ResolveSelector;
-  customerExtractVariable?: (code: string) => string;
-  fileName?: string;
-  injectTo?: InjectTo;
-  verbose?: boolean;
-}
-
-import { createFileHash, formatCss } from './utils';
-import chalk from 'chalk';
-import { injectClientPlugin } from './injectClientPlugin';
-
-const debug = Debug('vite-plugin-theme');
-
-export function viteThemePlugin(opt: ViteThemeOptions): Plugin[] {
-  let isServer = false;
-  let config: ResolvedConfig;
-  let clientPath = '';
+export function viteThemePlugin(options: ViteThemeOptions = {
+  colorVariables: [],
+  wrapperCssSelector: '',
+  fileName: 'app-theme-style',
+  injectTo: 'body',
+  verbose: true,
+}): PluginOption {
   const styleMap = new Map<string, string>();
+  const extCssSet = new Set<string>();
 
-  let extCssSet = new Set<string>();
-
-  const emptyPlugin: Plugin = {
-    name: 'vite:theme',
-  };
-
-  const options: ViteThemeOptions = Object.assign(
-    {
-      colorVariables: [],
-      wrapperCssSelector: '',
-      fileName: 'app-theme-style',
-      injectTo: 'body',
-      verbose: true,
-    },
-    opt
-  );
-
-  debug('plugin options:', options);
 
   const {
     colorVariables,
@@ -66,28 +37,27 @@ export function viteThemePlugin(opt: ViteThemeOptions): Plugin[] {
 
   if (!colorVariables || colorVariables.length === 0) {
     console.error('colorVariables is not empty!');
-    return [emptyPlugin];
+    return [{ name }];
   }
 
   const resolveSelectorFn = resolveSelector || ((s: string) => `${wrapperCssSelector} ${s}`);
 
   const cssOutputName = `${fileName}.${createFileHash()}.css`;
 
-  let needSourcemap = false;
+  const context = createContext({ colorThemeOptions: options, colorThemeFileName: cssOutputName });
+
   return [
-    injectClientPlugin('colorPlugin', {
-      colorPluginCssOutputName: cssOutputName,
-      colorPluginOptions: options,
-    }),
+    injectClientPlugin(),
     {
-      ...emptyPlugin,
-      enforce: 'post',
+      apply: "serve",
+      name,
+      enforce: "post",
       configResolved(resolvedConfig) {
-        config = resolvedConfig;
-        isServer = resolvedConfig.command === 'serve';
-        clientPath = JSON.stringify(path.posix.join(config.base, CLIENT_PUBLIC_PATH));
-        needSourcemap = !!resolvedConfig.build.sourcemap;
-        debug('plugin config:', resolvedConfig);
+        createContext({
+          viteOptions: resolvedConfig,
+          devEnvironment: resolvedConfig.command === 'serve',
+          needSourceMap: !!resolvedConfig.build.sourcemap
+        });
       },
 
       async transform(code, id) {
@@ -96,14 +66,52 @@ export function viteThemePlugin(opt: ViteThemeOptions): Plugin[] {
         }
         const getResult = (content: string) => {
           return {
-            map: needSourcemap ? this.getCombinedSourcemap() : null,
+            map: context.needSourceMap ? this.getCombinedSourcemap() : null,
             code: content,
           };
         };
 
-        const clientCode = isServer
-          ? await getClientStyleString(code)
-          : code.replace('export default', '').replace('"', '');
+        const clientCode = await getClientStyleString(code)
+
+        const extractCssCodeTemplate =
+          typeof customerExtractVariable === 'function'
+            ? customerExtractVariable(clientCode)
+            : extractVariable(clientCode, colorVariables, resolveSelectorFn);
+
+
+        if (!extractCssCodeTemplate) {
+          return null;
+        }
+
+        // dev-server
+        const retCode = [
+          `import { addCssToQueue } from ${context.injectClientPath}`,
+          `const themeCssId = ${JSON.stringify(id)}`,
+          `const themeCssStr = ${JSON.stringify(formatCss(extractCssCodeTemplate))}`,
+          `addCssToQueue(themeCssId, themeCssStr)`,
+          code,
+        ];
+
+        return getResult(retCode.join('\n'));
+      },
+    },
+    {
+      apply: "build",
+      name,
+      configResolved(resolvedConfig) {
+        createContext({
+          viteOptions: resolvedConfig,
+          devEnvironment: resolvedConfig.command === 'serve',
+          needSourceMap: !!resolvedConfig.build.sourcemap
+        });
+      },
+
+      async transform(code, id) {
+        if (!cssLangRE.test(id)) {
+          return null;
+        }
+
+        const clientCode = code.replace('export default', '').replace('"', '');
 
         // Used to extract the relevant color configuration in css, you can pass in the function to override
         const extractCssCodeTemplate =
@@ -111,29 +119,15 @@ export function viteThemePlugin(opt: ViteThemeOptions): Plugin[] {
             ? customerExtractVariable(clientCode)
             : extractVariable(clientCode, colorVariables, resolveSelectorFn);
 
-        debug('extractCssCodeTemplate:', id, extractCssCodeTemplate);
 
         if (!extractCssCodeTemplate) {
           return null;
         }
 
-        // dev-server
-        if (isServer) {
-          const retCode = [
-            `import { addCssToQueue } from ${clientPath}`,
-            `const themeCssId = ${JSON.stringify(id)}`,
-            `const themeCssStr = ${JSON.stringify(formatCss(extractCssCodeTemplate))}`,
-            `addCssToQueue(themeCssId, themeCssStr)`,
-            code,
-          ];
-
-          return getResult(retCode.join('\n'));
-        } else {
-          if (!styleMap.has(id)) {
-            extCssSet.add(extractCssCodeTemplate);
-          }
-          styleMap.set(id, extractCssCodeTemplate);
+        if (!styleMap.has(id)) {
+          extCssSet.add(extractCssCodeTemplate);
         }
+        styleMap.set(id, extractCssCodeTemplate);
 
         return null;
       },
@@ -142,56 +136,39 @@ export function viteThemePlugin(opt: ViteThemeOptions): Plugin[] {
         const {
           root,
           build: { outDir, assetsDir, minify },
-        } = config;
+        } = context.viteOptions;
         let extCssString = '';
         for (const css of extCssSet) {
           extCssString += css;
         }
         if (minify) {
-          extCssString = await minifyCSS(extCssString, config);
+          extCssString = await minifyCSS(extCssString, context.viteOptions);
         }
         const cssOutputPath = path.resolve(root, outDir, assetsDir, cssOutputName);
         fs.writeFileSync(cssOutputPath, extCssString);
       },
 
       closeBundle() {
-        if (verbose && !isServer) {
+        if (verbose && !context.devEnvironment) {
           const {
             build: { outDir, assetsDir },
-          } = config;
+          } = context.viteOptions;
           console.log(
-            chalk.cyan('\n✨ [vite-plugin-theme]') + ` - extract css code file is successfully:`
+            chalk.cyan('\n✨ [vite-dynamic-theme]') + ` - extract css code file is successfully:`
           );
           try {
             const { size } = fs.statSync(path.join(outDir, assetsDir, cssOutputName));
             console.log(
               chalk.dim(outDir + '/') +
-                chalk.magentaBright(`${assetsDir}/${cssOutputName}`) +
-                `\t\t${chalk.dim((size / 1024).toFixed(2) + 'kb')}` +
-                '\n'
+              chalk.magenta(`${assetsDir}/${cssOutputName}`) +
+              `\t\t${chalk.dim((size / 1024).toFixed(2) + 'kb')}` +
+              '\n'
             );
-          } catch (error) {}
+          } catch (error) {
+            console.log(error)
+          }
         }
       },
     },
   ];
-}
-
-// Intercept the css code embedded in js
-async function getClientStyleString(code: string) {
-  if (!code.includes(VITE_CLIENT_ENTRY)) {
-    return code;
-  }
-  code = code.replace(/\\n/g, '');
-  const cssPrefix = cssVariableString;
-  const cssPrefixLen = cssPrefix.length;
-
-  const cssPrefixIndex = code.indexOf(cssPrefix);
-  const len = cssPrefixIndex + cssPrefixLen;
-  const cssLastIndex = code.indexOf('\n', len + 1);
-
-  if (cssPrefixIndex !== -1) {
-    code = code.slice(len, cssLastIndex);
-  }
-  return code;
 }

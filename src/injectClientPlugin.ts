@@ -1,110 +1,51 @@
-import path from 'path';
-import { ResolvedConfig, normalizePath, Plugin } from 'vite';
-import { ViteThemeOptions } from '.';
-import { CLIENT_PUBLIC_PATH, CLIENT_PUBLIC_ABSOLUTE_PATH } from './constants';
-import { debug as Debug } from 'debug';
+import { normalizePath, Plugin } from 'vite';
+import { CLIENT_PUBLIC_ABSOLUTE_PATH } from './constants';
+import { createContext } from "./context";
 
-const debug = Debug('vite:inject-vite-plugin-theme-client');
+export function injectClientPlugin(): Plugin {
+  const context = createContext();
 
-type PluginType = 'colorPlugin' | 'antdDarkPlugin';
-
-export function injectClientPlugin(
-  type: PluginType,
-  {
-    colorPluginOptions,
-    colorPluginCssOutputName,
-    antdDarkCssOutputName,
-    antdDarkExtractCss,
-    antdDarkLoadLink,
-  }: {
-    colorPluginOptions?: ViteThemeOptions;
-    antdDarkCssOutputName?: string;
-    colorPluginCssOutputName?: string;
-    antdDarkExtractCss?: boolean;
-    antdDarkLoadLink?: boolean;
-  }
-): Plugin {
-  let config: ResolvedConfig;
-  let isServer: boolean;
-  let needSourcemap = false;
   return {
-    name: 'vite:inject-vite-plugin-theme-client',
+    name: 'vite:inject-vite-dynamic-theme-client',
     enforce: 'pre',
-    configResolved(resolvedConfig) {
-      config = resolvedConfig;
-      isServer = resolvedConfig.command === 'serve';
-      needSourcemap = !!resolvedConfig.build.sourcemap;
-    },
-
-    transformIndexHtml: {
-      enforce: 'pre',
-      async transform(html) {
-        if (html.includes(CLIENT_PUBLIC_PATH)) {
-          return html;
-        }
-        return {
-          html,
-          tags: [
-            {
-              tag: 'script',
-              attrs: {
-                type: 'module',
-                src: path.posix.join(CLIENT_PUBLIC_PATH),
-              },
-              injectTo: 'head-prepend',
-            },
-          ],
-        };
-      },
-    },
     async transform(code, id) {
       const nid = normalizePath(id);
-      const path = normalizePath('vite-plugin-theme/es/client.js');
-      const getMap = () => (needSourcemap ? this.getCombinedSourcemap() : null);
+      const path = normalizePath('vite-dynamic-theme/es/client.js');
+      const getMap = () => (context.needSourceMap ? this.getCombinedSourcemap() : null);
 
       if (
         nid === CLIENT_PUBLIC_ABSOLUTE_PATH ||
         nid.endsWith(path) ||
+        nid.includes('vite-dynamic-theme/es') ||
+        nid.includes('vite-dynamic-theme_es') ||
         // support .vite cache
         nid.includes(path.replace(/\//gi, '_'))
       ) {
-        debug('transform client file:', id, code);
-
         const {
+          base,
           build: { assetsDir },
-        } = config;
+        } = context.viteOptions;
 
         const getOutputFile = (name?: string) => {
-          return JSON.stringify(`${config.base}${assetsDir}/${name}`);
+          return JSON.stringify(`${base}${assetsDir}/${name}`);
         };
 
-        if (type === 'colorPlugin') {
-          code = code
-            .replace('__COLOR_PLUGIN_OUTPUT_FILE_NAME__', getOutputFile(colorPluginCssOutputName))
-            .replace('__COLOR_PLUGIN_OPTIONS__', JSON.stringify(colorPluginOptions));
-        }
+        code = code
+          .replace('__COLOR_PLUGIN_OUTPUT_FILE_NAME__', getOutputFile(context.colorThemeFileName))
+          .replace('__COLOR_PLUGIN_OPTIONS__', JSON.stringify(context.colorThemeOptions));
 
-        if (type === 'antdDarkPlugin') {
-          code = code.replace(
-            '__ANTD_DARK_PLUGIN_OUTPUT_FILE_NAME__',
-            getOutputFile(antdDarkCssOutputName)
-          );
-          if (typeof antdDarkExtractCss === 'boolean') {
-            code = code.replace(
-              '__ANTD_DARK_PLUGIN_EXTRACT_CSS__',
-              JSON.stringify(antdDarkExtractCss)
-            );
-          }
-          if (typeof antdDarkLoadLink === 'boolean') {
-            code = code.replace(
-              '__ANTD_DARK_PLUGIN_LOAD_LINK__',
-              JSON.stringify(antdDarkExtractCss)
-            );
-          }
-        }
+        code = code.replace(
+          '__ANTD_DARK_PLUGIN_OUTPUT_FILE_NAME__',
+          getOutputFile(context.antdThemeFileName)
+        ).replace('__ANTD_DARK_PLUGIN_EXTRACT_CSS__',
+          JSON.stringify(context.antdThemeOptions.extractCss)
+        ).replace(
+          '__ANTD_DARK_PLUGIN_LOAD_LINK__',
+          JSON.stringify(context.antdThemeOptions?.loadMethod === 'link')
+        );
 
         return {
-          code: code.replace('__PROD__', JSON.stringify(!isServer)),
+          code: code.replace('__PROD__', JSON.stringify(!context.devEnvironment)),
           map: getMap(),
         };
       }

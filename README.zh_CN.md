@@ -1,4 +1,7 @@
-# vite-plugin-theme
+# vite-dynamic-theme
+
+> 基于 [vite-plugin-theme](https://github.com/vbenjs/vite-plugin-theme)
+
 
 **中文** | [English](./README.md)
 
@@ -12,7 +15,7 @@
 
 **node version:** >=12.0.0
 
-**vite version:** >=2.0.0
+**vite version:** >=3.0.0
 
 ```
 yarn add vite-plugin-theme -D
