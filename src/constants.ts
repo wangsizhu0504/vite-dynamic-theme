@@ -1,17 +1,12 @@
-import path from 'path';
 import { normalizePath } from 'vite';
 
 export const VITE_CLIENT_ENTRY = '/@vite/client';
 
-export const VITE_PLUGIN_THEME_CLIENT_ENTRY = normalizePath(
-  path.resolve(process.cwd(), 'node_modules/vite-plugin-theme/es/')
-);
+export const VITE_PLUGIN_THEME_CLIENT_ENTRY = normalizePath('node_modules/vite-dynamic-theme/es/');
 
-export const CLIENT_PUBLIC_ABSOLUTE_PATH = normalizePath(
-  VITE_PLUGIN_THEME_CLIENT_ENTRY + '/client.js'
-);
+export const CLIENT_PUBLIC_ABSOLUTE_PATH = normalizePath(`/${VITE_PLUGIN_THEME_CLIENT_ENTRY}/client.js`);
 
-export const CLIENT_PUBLIC_PATH = `/${VITE_PLUGIN_THEME_CLIENT_ENTRY}/client.js`;
+export const CLIENT_PUBLIC_PATH = normalizePath(`${VITE_PLUGIN_THEME_CLIENT_ENTRY}/client.js`);
 
 export const commentRE = /\\\\?n|\n|\\\\?r|\/\*[\s\S]+?\*\//g;
 
@@ -29,4 +24,4 @@ export const cssValueRE = /(\s?[a-z0-9]+\s)*/;
 export const safeEmptyRE = /\s?/;
 export const importSafeRE = /(\s*!important)?/;
 
-export const linkID = '__VITE_PLUGIN_THEME-ANTD_DARK_THEME_LINK__';
+export const linkID = '__VITE_DYNAMIC_THEME-ANTD_DARK_THEME_LINK__';
