@@ -108,7 +108,7 @@ export async function replaceStyleVariables({
       const processCss = await replaceCssColors(cssText, colorVariables, customCssHandler);
       appendCssToDom(styleDom, processCss, injectTo);
     } catch (error) {
-      throw new Error(error);
+      throw new Error(error as unknown as any);
     }
   }
 }
