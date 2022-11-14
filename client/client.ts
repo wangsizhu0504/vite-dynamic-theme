@@ -76,7 +76,7 @@ function renderTheme() {
 
   const styleDom = getStyleDom(styleTagId);
   let html = styleDom.innerHTML;
-  for (let [id, css] of styleRenderQueueMap.entries()) {
+  for (const [id, css] of styleRenderQueueMap.entries()) {
     html += css;
     window[globalField].styleRenderQueueMap!.delete(id);
     window[globalField].styleIdMap!.set(id, css);
@@ -97,7 +97,7 @@ export async function replaceStyleVariables({
   const styleIdMap = getGlobalOptions('styleIdMap')!;
   const styleRenderQueueMap = getGlobalOptions('styleRenderQueueMap')!;
   if (!isProd) {
-    for (let [id, css] of styleIdMap.entries()) {
+    for (const [id, css] of styleIdMap.entries()) {
       styleRenderQueueMap.set(id, css);
     }
     renderTheme();
@@ -126,8 +126,7 @@ export async function loadDarkThemeCss() {
       linkTag.setAttribute('rel', 'stylesheet');
     }
   } else {
-    const colorPluginOutputFileName = __ANTD_DARK_PLUGIN_OUTPUT_FILE_NAME__;
-    const cssText = await fetchCss(colorPluginOutputFileName);
+    const cssText = await fetchCss(__ANTD_DARK_PLUGIN_OUTPUT_FILE_NAME__);
     const styleDom = getStyleDom(darkStyleTagId);
     appendCssToDom(styleDom, cssText, injectTo);
   }
@@ -147,7 +146,7 @@ export async function replaceCssColors(
   colorVariables.forEach(function (color, index) {
     const reg = new RegExp(
       color.replace(/,/g, ',\\s*').replace(/\s/g, '').replace('(', `\\(`).replace(')', `\\)`) +
-        '([\\da-f]{2})?(\\b|\\)|,|\\s)?',
+      '([\\da-f]{2})?(\\b|\\)|,|\\s)?',
       'ig'
     );
     retCss = retCss.replace(reg, colors[index] + '$1$2').replace('$1$2', '');
@@ -225,8 +224,8 @@ function fetchCss(fileName: string): Promise<string> {
 }
 
 function debounce(delay: number, fn: (...arg: any[]) => any) {
-  let timer;
-  return function (...args) {
+  let timer: NodeJS.Timeout;
+  return function (...args: any[]) {
     // @ts-ignore
     const ctx = this;
     clearTimeout(timer);
