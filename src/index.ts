@@ -1,13 +1,10 @@
 import { PluginOption } from 'vite';
-import path from 'path';
-import fs from 'fs-extra';
-import { createFileHash, extractVariable, formatCss, getClientStyleString, minifyCSS } from './utils';
-import colors from "picocolors";
+import { createFileHash, extractVariable, formatCss, getClientStyleString } from './utils';
 import { cssLangRE } from './constants';
 import { injectClientPlugin } from './injectClientPlugin';
 import { createContext } from "./context";
 import { ViteThemeOptions } from './types';
-
+import { writeBundle, closeBundle } from './bundle'
 export * from '../client/colorUtils';
 
 export { antdDarkThemePlugin } from './antdDarkThemePlugin';
@@ -113,7 +110,6 @@ export function viteThemePlugin(options: ViteThemeOptions = {
 
         const clientCode = code.replace('export default', '').replace('"', '');
 
-        // Used to extract the relevant color configuration in css, you can pass in the function to override
         const extractCssCodeTemplate =
           typeof customerExtractVariable === 'function'
             ? customerExtractVariable(clientCode)
@@ -133,41 +129,11 @@ export function viteThemePlugin(options: ViteThemeOptions = {
       },
 
       async writeBundle() {
-        const {
-          root,
-          build: { outDir, assetsDir, minify },
-        } = context.viteOptions;
-        let extCssString = '';
-        for (const css of extCssSet) {
-          extCssString += css;
-        }
-        if (minify) {
-          extCssString = await minifyCSS(extCssString, context.viteOptions);
-        }
-        const cssOutputPath = path.resolve(root, outDir, assetsDir, cssOutputName);
-        fs.writeFileSync(cssOutputPath, extCssString);
+        await writeBundle(context, '', extCssSet, cssOutputName);
       },
 
       closeBundle() {
-        if (verbose && !context.devEnvironment) {
-          const {
-            build: { outDir, assetsDir },
-          } = context.viteOptions;
-          console.log(
-            colors.cyan('\n✨ [vite-dynamic-theme]') + ` - extract css code file is successfully:`
-          );
-          try {
-            const { size } = fs.statSync(path.join(outDir, assetsDir, cssOutputName));
-            console.log(
-              colors.dim(outDir + '/') +
-              colors.magenta(`${assetsDir}/${cssOutputName}`) +
-              `\t\t${colors.dim((size / 1024).toFixed(2) + 'kb')}` +
-              '\n'
-            );
-          } catch (error) {
-            console.log(error)
-          }
-        }
+        closeBundle(context, verbose, cssOutputName);
       },
     },
   ];

@@ -2,13 +2,13 @@ import type { PluginOption } from 'vite';
 import path from 'path';
 import fs from 'fs-extra';
 import less from 'less';
-import { createFileHash, extractVariable, minifyCSS } from './utils';
+import { createFileHash, extractVariable } from './utils';
 import { colorRE, linkID } from './constants';
 import { injectClientPlugin } from './injectClientPlugin';
 import { lessPlugin } from './preprocessor/less';
-import colors from "picocolors";
 import { createContext } from "./context";
 import { AntdDarkThemeOption } from './types';
+import { closeBundle, writeBundle } from './bundle';
 
 export function antdDarkThemePlugin(opt: AntdDarkThemeOption): PluginOption {
   const options = Object.assign({
@@ -160,37 +160,11 @@ export function antdDarkThemePlugin(opt: AntdDarkThemeOption): PluginOption {
       },
 
       async writeBundle() {
-        const {
-          root,
-          build: { outDir, assetsDir, minify },
-        } = context.viteOptions;
-        if (minify) {
-          extCssString = await minifyCSS(extCssString, context.viteOptions);
-        }
-        const cssOutputPath = path.resolve(root, outDir, assetsDir, cssOutputName);
-        fs.writeFileSync(cssOutputPath, extCssString);
+        await writeBundle(context, extCssString, new Set<string>, cssOutputName);
       },
 
       closeBundle() {
-        if (verbose && !context.devEnvironment) {
-          const {
-            build: { outDir, assetsDir },
-          } = context.viteOptions;
-          console.log(
-            colors.cyan('\n✨ [vite-dynamic-theme:antd-dark]- extract antd dark css code file is successfully:')
-          );
-          try {
-            const { size } = fs.statSync(path.join(outDir, assetsDir, cssOutputName));
-            console.log(
-              colors.dim(outDir + '/') +
-              colors.magenta(`${assetsDir}/${cssOutputName}`) +
-              `\t\t${colors.dim((size / 1024).toFixed(2) + 'kb')}` +
-              '\n'
-            );
-          } catch (error) {
-            console.log(error)
-          }
-        }
+        closeBundle(context, verbose, cssOutputName);
       },
     },
   ];
