@@ -6,7 +6,7 @@ import { createFileHash, extractVariable, minifyCSS } from './utils';
 import { colorRE, linkID } from './constants';
 import { injectClientPlugin } from './injectClientPlugin';
 import { lessPlugin } from './preprocessor/less';
-import chalk from "chalk";
+import colors from "picocolors";
 import { createContext } from "./context";
 import { AntdDarkThemeOption } from './types';
 
@@ -177,14 +177,14 @@ export function antdDarkThemePlugin(opt: AntdDarkThemeOption): PluginOption {
             build: { outDir, assetsDir },
           } = context.viteOptions;
           console.log(
-            chalk.cyan('\n✨ [vite-dynamic-theme:antd-dark]- extract antd dark css code file is successfully:')
+            colors.cyan('\n✨ [vite-dynamic-theme:antd-dark]- extract antd dark css code file is successfully:')
           );
           try {
             const { size } = fs.statSync(path.join(outDir, assetsDir, cssOutputName));
             console.log(
-              chalk.dim(outDir + '/') +
-              chalk.magenta(`${assetsDir}/${cssOutputName}`) +
-              `\t\t${chalk.dim((size / 1024).toFixed(2) + 'kb')}` +
+              colors.dim(outDir + '/') +
+              colors.magenta(`${assetsDir}/${cssOutputName}`) +
+              `\t\t${colors.dim((size / 1024).toFixed(2) + 'kb')}` +
               '\n'
             );
           } catch (error) {

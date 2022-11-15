@@ -2,7 +2,7 @@ import { PluginOption } from 'vite';
 import path from 'path';
 import fs from 'fs-extra';
 import { createFileHash, extractVariable, formatCss, getClientStyleString, minifyCSS } from './utils';
-import chalk from "chalk";
+import colors from "picocolors";
 import { cssLangRE } from './constants';
 import { injectClientPlugin } from './injectClientPlugin';
 import { createContext } from "./context";
@@ -154,14 +154,14 @@ export function viteThemePlugin(options: ViteThemeOptions = {
             build: { outDir, assetsDir },
           } = context.viteOptions;
           console.log(
-            chalk.cyan('\n✨ [vite-dynamic-theme]') + ` - extract css code file is successfully:`
+            colors.cyan('\n✨ [vite-dynamic-theme]') + ` - extract css code file is successfully:`
           );
           try {
             const { size } = fs.statSync(path.join(outDir, assetsDir, cssOutputName));
             console.log(
-              chalk.dim(outDir + '/') +
-              chalk.magenta(`${assetsDir}/${cssOutputName}`) +
-              `\t\t${chalk.dim((size / 1024).toFixed(2) + 'kb')}` +
+              colors.dim(outDir + '/') +
+              colors.magenta(`${assetsDir}/${cssOutputName}`) +
+              `\t\t${colors.dim((size / 1024).toFixed(2) + 'kb')}` +
               '\n'
             );
           } catch (error) {
