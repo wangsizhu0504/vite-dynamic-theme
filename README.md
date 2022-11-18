@@ -4,7 +4,6 @@
 
 **English** | [中文](./README.zh_CN.md)
 
-[![npm][npm-img]][npm-url] [![node][node-img]][node-url]
 
 Vite plugin for dynamically changing the theme color of the interface
 
