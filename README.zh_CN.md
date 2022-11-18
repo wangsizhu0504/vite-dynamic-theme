@@ -5,7 +5,6 @@
 
 **中文** | [English](./README.md)
 
-[![npm][npm-img]][npm-url] [![node][node-img]][node-url]
 
 用于动态更改界面主题色的 vite 插件。
 
@@ -18,13 +17,13 @@
 **vite version:** >=3.0.0
 
 ```
-yarn add vite-plugin-theme -D
+yarn add vite-dynamic-theme -D
 ```
 
 或者
 
 ```
-npm i vite-plugin-theme -D
+npm i vite-dynamic-theme -D
 ```
 
 ## 使用
@@ -35,7 +34,7 @@ npm i vite-plugin-theme -D
 import { defineConfig, Plugin } from 'vite';
 import vue from '@vitejs/plugin-vue';
 
-import { viteThemePlugin, mixLighten, mixDarken, tinycolor } from 'vite-plugin-theme';
+import { viteThemePlugin, mixLighten, mixDarken, tinycolor } from 'vite-dynamic-theme';
 
 export default defineConfig({
   plugins: [
